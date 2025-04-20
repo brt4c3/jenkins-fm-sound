@@ -29,7 +29,7 @@ public class FMTextToWav {
         int totalSamples = frameDuration * chars.length;
         byte[] audio = new byte[totalSamples * 2]; // 16-bit PCM = 2 bytes/sample
 
-        double carrierFreq = 440.0;
+        double carrierFreq = 852.0;
         int sampleIndex = 0;
 
         for (String chStr : chars) {
@@ -52,17 +52,23 @@ public class FMTextToWav {
             }
         }
 
-        // Logarithmic reverb-style fade-out (1 second)
-        int fadeSamples = sampleRate;
-        for (int i = 0; i < fadeSamples; i++) {
-            int idx = audio.length - (i * 2);
-            if (idx - 2 < 0) break;
+        // Logarithmic fade-in and fade-out across the entire sample length
+        for (int i = 0; i < sampleIndex; i++) {
+            double pos = (double) i / sampleIndex;
+            // Fade in: 0 → 0.5, Fade out: 0.5 → 1.0 (symmetric)
+            double logFade = pos < 0.5
+                ? Math.log10(1 + 9 * pos * 2) / Math.log10(10)
+                : Math.log10(1 + 9 * (2 - 2 * pos)) / Math.log10(10);
 
-            double fadeFactor = Math.log10(
-                10.0 - (9.0 * i) / (double) fadeSamples
-            ); // log scale
-            audio[idx - 2] = (byte) (audio[idx - 2] * fadeFactor);
-            audio[idx - 1] = (byte) (audio[idx - 1] * fadeFactor);
+            int idx = i * 2;
+            short sample = (short) (((audio[idx + 1] << 8) |
+                    (audio[idx] & 0xFF)) &
+                0xFFFF);
+
+            sample = (short) (sample * logFade);
+
+            audio[idx] = (byte) (sample & 0xff);
+            audio[idx + 1] = (byte) ((sample >> 8) & 0xff);
         }
 
         // Write to WAV file
