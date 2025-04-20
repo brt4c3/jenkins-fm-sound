@@ -1,0 +1,18 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout">
+
+<l:layout title="FM Playback">
+  <l:header />
+  <l:main-panel>
+    <h2>FM Synthesized Audio Playback</h2>
+
+    <p>This audio was generated from the provided input:</p>
+
+    <audio controls="autoplay">
+      <source src="${rootURL}/job/${it.owner.name}/lastBuild/artifact/${it.audioFileName}" type="audio/wav"/>
+      Your browser does not support the audio element.
+    </audio>
+
+  </l:main-panel>
+</l:layout>
+</j:jelly>

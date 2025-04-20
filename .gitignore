@@ -1,0 +1,34 @@
+# Maven build output
+/target/
+
+# Eclipse files
+.classpath
+.project
+.settings/
+
+# IntelliJ IDEA files
+*.iml
+.idea/
+
+# NetBeans files
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+*.nb-gradle/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Git ignored files backup
+*.swp
+*.swo
+*~
+
+# Plugin HPI file
+*.hpi
