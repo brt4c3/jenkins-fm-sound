@@ -7,6 +7,15 @@ public class FMTextToWav {
 
     public static void generateFromString(String text, String outPath)
         throws IOException {
+        generateFromString(text, outPath, 1.0, 3.0); // Default stretch=1.0, modDepth=3.0
+    }
+
+    public static void generateFromString(
+        String text,
+        String outPath,
+        double stretchFactor,
+        double modDepth
+    ) throws IOException {
         if (text == null || text.isEmpty()) {
             throw new IllegalArgumentException(
                 "Input text cannot be null or empty."
@@ -14,20 +23,19 @@ public class FMTextToWav {
         }
 
         String[] chars = text.split("");
-
-        int sampleRate = 44100; // Standard audio sample rate
-        int fps = 24; // Frames per second
-        int frameDuration = sampleRate / fps;
+        int sampleRate = 44100;
+        int fps = 16;
+        int frameDuration = (int) (((double) sampleRate / fps) * stretchFactor);
         int totalSamples = frameDuration * chars.length;
-        byte[] audio = new byte[totalSamples * 2]; // 16-bit audio = 2 bytes/sample
+        byte[] audio = new byte[totalSamples * 2]; // 16-bit PCM = 2 bytes/sample
 
-        double carrierFreq = 440.0; // A4 tone
+        double carrierFreq = 440.0;
         int sampleIndex = 0;
 
         for (String chStr : chars) {
             char ch = chStr.charAt(0);
-            double modIndex = ((int) ch) / 127.0; // Normalize ASCII to 0.0–1.0
-            double modFreq = 3.0; // Slow modulation rate
+            double modIndex = (((int) ch) / 127.0) * modDepth; // allow deeper modulation
+            double modFreq = 3.0;
 
             for (int j = 0; j < frameDuration; j++) {
                 double t = (double) j / sampleRate;
@@ -36,20 +44,23 @@ public class FMTextToWav {
                     2 * Math.PI * carrierFreq * t + modIndex * modSignal;
 
                 short sample = (short) (Math.sin(fmAngle) * Short.MAX_VALUE);
-                audio[sampleIndex++] = (byte) (sample & 0xff);
-                audio[sampleIndex++] = (byte) ((sample >> 8) & 0xff);
+                if (sampleIndex * 2 + 1 >= audio.length) break;
+
+                audio[sampleIndex * 2] = (byte) (sample & 0xff);
+                audio[sampleIndex * 2 + 1] = (byte) ((sample >> 8) & 0xff);
+                sampleIndex++;
             }
         }
 
-        // Linear fade out over the last 1/4 second
-        int fadeSamples = Math.min(sampleRate / 4, audio.length / 2);
+        // Logarithmic reverb-style fade-out (1 second)
+        int fadeSamples = sampleRate;
         for (int i = 0; i < fadeSamples; i++) {
             int idx = audio.length - (i * 2);
-            if (idx - 2 < 0) {
-                break; // Avoid negative index
-            }
+            if (idx - 2 < 0) break;
 
-            float fadeFactor = 1.0f - (float) i / fadeSamples;
+            double fadeFactor = Math.log10(
+                10.0 - (9.0 * i) / (double) fadeSamples
+            ); // log scale
             audio[idx - 2] = (byte) (audio[idx - 2] * fadeFactor);
             audio[idx - 1] = (byte) (audio[idx - 1] * fadeFactor);
         }
@@ -57,7 +68,7 @@ public class FMTextToWav {
         // Write to WAV file
         ByteArrayInputStream bais = new ByteArrayInputStream(audio);
         AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
-        AudioInputStream ais = new AudioInputStream(bais, format, totalSamples);
+        AudioInputStream ais = new AudioInputStream(bais, format, sampleIndex);
         AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(outPath));
     }
 }
