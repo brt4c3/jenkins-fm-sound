@@ -7,74 +7,101 @@ public class FMTextToWav {
 
     public static void generateFromString(String text, String outPath)
         throws IOException {
-        generateFromString(text, outPath, 1.0, 3.0); // Default stretch=1.0, modDepth=3.0
-    }
-
-    public static void generateFromString(
-        String text,
-        String outPath,
-        double stretchFactor,
-        double modDepth
-    ) throws IOException {
-        if (text == null || text.isEmpty()) {
-            throw new IllegalArgumentException(
-                "Input text cannot be null or empty."
-            );
-        }
-
-        String[] chars = text.split("");
         int sampleRate = 44100;
-        int fps = 16;
-        int frameDuration = (int) (((double) sampleRate / fps) * stretchFactor);
-        int totalSamples = frameDuration * chars.length;
-        byte[] audio = new byte[totalSamples * 2]; // 16-bit PCM = 2 bytes/sample
+        double duration = 2.5;
+        int totalSamples = (int) (sampleRate * duration);
+        float[] carrierSignal = generateTextCarrierSignal(
+            text,
+            totalSamples,
+            sampleRate
+        );
+        float[] modulatorSignal = generateCinematicModulatorSignal(
+            totalSamples,
+            sampleRate
+        );
+        byte[] audio = new byte[totalSamples * 2]; // 16-bit PCM
 
-        double carrierFreq = 852.0;
-        int sampleIndex = 0;
+        for (int i = 0; i < totalSamples; i++) {
+            double t = (double) i / sampleRate;
 
-        for (String chStr : chars) {
-            char ch = chStr.charAt(0);
-            double modIndex = (((int) ch) / 127.0) * modDepth; // allow deeper modulation
-            double modFreq = 3.0;
+            // Combine the carrier signal and modulator as phase input
+            double angle = carrierSignal[i] + modulatorSignal[i];
+            double sample = Math.sin(angle);
 
-            for (int j = 0; j < frameDuration; j++) {
-                double t = (double) j / sampleRate;
-                double modSignal = Math.sin(2 * Math.PI * modFreq * t);
-                double fmAngle =
-                    2 * Math.PI * carrierFreq * t + modIndex * modSignal;
+            // Optional fade-out envelope
+            sample *= Math.exp(-2.5 * t);
 
-                short sample = (short) (Math.sin(fmAngle) * Short.MAX_VALUE);
-                if (sampleIndex * 2 + 1 >= audio.length) break;
-
-                audio[sampleIndex * 2] = (byte) (sample & 0xff);
-                audio[sampleIndex * 2 + 1] = (byte) ((sample >> 8) & 0xff);
-                sampleIndex++;
-            }
+            short pcm = (short) (sample * Short.MAX_VALUE);
+            audio[i * 2] = (byte) (pcm & 0xff);
+            audio[i * 2 + 1] = (byte) ((pcm >> 8) & 0xff);
         }
 
-        // Logarithmic fade-in and fade-out across the entire sample length
-        for (int i = 0; i < sampleIndex; i++) {
-            double pos = (double) i / sampleIndex;
-            // Fade in: 0 → 0.5, Fade out: 0.5 → 1.0 (symmetric)
-            double logFade = pos < 0.5
-                ? Math.log10(1 + 9 * pos * 2) / Math.log10(10)
-                : Math.log10(1 + 9 * (2 - 2 * pos)) / Math.log10(10);
-
-            int idx = i * 2;
-            short sample = (short) (((audio[idx + 1] << 8) |
-                    (audio[idx] & 0xFF)) &
-                0xFFFF);
-
-            sample = (short) (sample * logFade);
-
-            audio[idx] = (byte) (sample & 0xff);
-            audio[idx + 1] = (byte) ((sample >> 8) & 0xff);
-        }
-
-        // Write to WAV file
+        // Write to WAV
         ByteArrayInputStream bais = new ByteArrayInputStream(audio);
         AudioFormat format = new AudioFormat(sampleRate, 16, 1, true, false);
-        AudioInputStream ais = new AudioInputStream(bais, format, sampleIndex);
+        AudioInputStream ais = new AudioInputStream(bais, format, totalSamples);
         AudioSystem.write(ais, AudioFileFormat.Type.WAVE, new File(outPath));
+    }
+
+    private static float[] generateTextCarrierSignal(
+        String text,
+        int totalSamples,
+        int sampleRate
+    ) {
+        float[] signal = new float[totalSamples];
+        double fps = (double) text.length() / 2.5;
+        int frameSize = (int) (sampleRate / fps);
+        double baseFreq = 852.0;
+
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            double modIndex = (((int) ch) / 127.0) * 2.5;
+
+            for (int j = 0; j < frameSize; j++) {
+                int idx = i * frameSize + j;
+                if (idx >= totalSamples) break;
+
+                double t = (double) idx / sampleRate;
+                double modSignal = Math.sin(2 * Math.PI * 3.0 * t);
+                signal[idx] = (float) (2 * Math.PI * baseFreq * t +
+                    modIndex * modSignal);
+            }
+        }
+        return signal;
+    }
+
+    private static float[] generateCinematicModulatorSignal(
+        int totalSamples,
+        int sampleRate
+    ) {
+        float[] signal = new float[totalSamples];
+        double baseFreq = 60.0;
+        double endFreq = 180.0;
+        double modFreq = 3.0;
+
+        for (int i = 0; i < totalSamples; i++) {
+            double t = (double) i / sampleRate;
+            double freq =
+                baseFreq + (endFreq - baseFreq) * Math.pow(t / 2.5, 0.7);
+            double modSignal = Math.sin(2 * Math.PI * modFreq * t);
+            double fmAngle = 2 * Math.PI * freq * t + 8.0 * modSignal;
+            double raw = Math.sin(fmAngle);
+            double harmonic =
+                0.3 * Math.sin(2 * Math.PI * freq * 2 * t) * Math.exp(-4 * t);
+
+            signal[i] = (float) (Math.tanh(2.5 * raw) * Math.exp(-2.5 * t) +
+                harmonic);
+        }
+
+        return signal;
+    }
+
+    public static void main(String[] args) {
+        try {
+            generateFromString("MODULATE", "output.wav");
+            System.out.println("Modulated FM sound written to output.wav");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
