@@ -1,29 +1,55 @@
 package io.github.brt4c3.jenkinsfmsound;
 
-import hudson.model.Action;
-import hudson.model.Run;
+public class FMPlaybackAction {
 
-public class FMPlaybackAction implements Action {
+    private String message;
 
-    private final String audioFileName;
-
-    public FMPlaybackAction(String audioFileName) {
-        this.audioFileName = audioFileName;
+    // Default constructor (no arguments)
+    public FMPlaybackAction() {
+        // Default constructor logic (if any)
     }
 
-    public String getAudioFileName() {
-        return audioFileName;
+    // Constructor that accepts a String (matches the FMSoundRecorder usage)
+    public FMPlaybackAction(String message) {
+        this.message = message;
     }
 
-    public String getIconFileName() {
-        return "speaker.png"; // or return null to hide
+    public void playSound() {
+        try {
+            // Using the message in the playSound method or another logic
+            System.out.println(message);
+            // Sound-playing logic here
+
+        } catch (Exception e) {
+            // Handle any exception that might be thrown
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    public String getDisplayName() {
-        return "FM Sound Playback";
+    // Other methods you might need
+    public void stopSound() {
+        try {
+            // Code that may throw an exception
+            if (message == null || message.isEmpty()) {
+                throw new RuntimeException("No message provided for playback.");
+            }
+
+            // Logic to stop the sound
+            System.out.println("Stopping sound with message: " + message);
+        } catch (Exception e) {
+            // Catch the general exception
+            System.err.println("Error: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
-    public String getUrlName() {
-        return "fm-playback";
+    // Getter and setter for message if needed
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

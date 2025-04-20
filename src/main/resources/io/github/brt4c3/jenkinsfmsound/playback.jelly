@@ -1,0 +1,12 @@
+<?jelly escape-by-default='true'?>
+<html>
+  <head>
+    <title>FM Sound Playback</title>
+  </head>
+  <body>
+    <h2>FM Sound Playback</h2>
+    <a href="${action.urlName}/play" target="_blank">
+      <button>Play FM Sound</button>
+    </a>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+<?jelly escape-by-default="true"?>
+<html>
+    <head>
+        <title>FM Sound Actions</title>
+    </head>
+    <body>
+        <h2>FM Sound Controls</h2>
+        <!-- Buttons for play, stop, record, etc. -->
+        <button>Start Recording</button>
+        <button>Stop Recording</button>
+    </body>
+</html>
