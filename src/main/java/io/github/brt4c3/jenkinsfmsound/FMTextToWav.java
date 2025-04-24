@@ -8,7 +8,7 @@ public class FMTextToWav {
     public static void generateFromString(String text, String outPath)
         throws IOException {
         int sampleRate = 44100;
-        double duration = 2.5;
+        double duration = 5;
         int totalSamples = (int) (sampleRate * duration);
         float[] carrierSignal = generateTextCarrierSignal(
             text,
@@ -29,7 +29,7 @@ public class FMTextToWav {
             double sample = Math.sin(angle);
 
             // Optional fade-out envelope
-            sample *= Math.exp(-2.5 * t);
+            sample *= Math.exp(-3 * t);
 
             short pcm = (short) (sample * Short.MAX_VALUE);
             audio[i * 2] = (byte) (pcm & 0xff);
@@ -49,13 +49,13 @@ public class FMTextToWav {
         int sampleRate
     ) {
         float[] signal = new float[totalSamples];
-        double fps = (double) text.length() / 2.5;
+        double fps = (double) text.length() / 5;
         int frameSize = (int) (sampleRate / fps);
         double baseFreq = 852.0;
 
         for (int i = 0; i < text.length(); i++) {
             char ch = text.charAt(i);
-            double modIndex = (((int) ch) / 127.0) * 2.5;
+            double modIndex = (((int) ch) / 127.0) * 5;
 
             for (int j = 0; j < frameSize; j++) {
                 int idx = i * frameSize + j;
